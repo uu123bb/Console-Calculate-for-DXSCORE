@@ -4,6 +4,14 @@ on:
   push:
     tags:
       - 'v*'
+  # 👇 在此处添加 workflow_dispatch 配置，用于手动触发工作流
+  workflow_dispatch:
+    # 可选：定义手动触发时可指定的参数（根据需要添加）
+    # inputs:
+    #   version:
+    #     description: '手动指定版本号'
+    #     required: false
+    #     default: 'v1.0.0'
 
 permissions:
   contents: write
@@ -27,10 +35,8 @@ jobs:
     - name: Build
       run: |
         if [ "${{ matrix.os }}" == "windows-latest" ]; then
-          # Windows 静态链接运行库，避免依赖动态库
           g++ calc_new!!!.cpp -o maimaiDX-calculator.exe -static -static-libgcc -static-libstdc++
         else
-          # Linux 保持默认（通常动态链接，但可根据需求添加 -static）
           g++ calc_new!!!.cpp -o maimaiDX-calculator
         fi
     
@@ -59,4 +65,4 @@ jobs:
           artifacts/maimaiDX-calculator-ubuntu-latest/maimaiDX-calculator
           artifacts/maimaiDX-calculator-windows-latest/maimaiDX-calculator.exe
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 推荐使用内置 token，无需额外配置 PAT
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
