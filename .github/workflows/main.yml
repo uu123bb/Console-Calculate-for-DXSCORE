@@ -1,0 +1,62 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: write
+  actions: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up environment
+      if: matrix.os == 'ubuntu-latest'
+      run: sudo apt-get update && sudo apt-get install -y g++
+    
+    - name: Build
+      run: |
+        if [ "${{ matrix.os }}" == "windows-latest" ]; then
+          # Windows 静态链接运行库，避免依赖动态库
+          g++ calc_new!!!.cpp -o maimaiDX-calculator.exe -static -static-libgcc -static-libstdc++
+        else
+          # Linux 保持默认（通常动态链接，但可根据需求添加 -static）
+          g++ calc_new!!!.cpp -o maimaiDX-calculator
+        fi
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: maimaiDX-calculator-${{ matrix.os }}
+        path: |
+          maimaiDX-calculator*
+          !*.cpp
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        generate_release_notes: true
+        files: |
+          artifacts/maimaiDX-calculator-ubuntu-latest/maimaiDX-calculator
+          artifacts/maimaiDX-calculator-windows-latest/maimaiDX-calculator.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 推荐使用内置 token，无需额外配置 PAT
