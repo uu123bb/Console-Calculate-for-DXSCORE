@@ -37,18 +37,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y g++  # 安装GCC编译器
 
-      # 步骤3：编译代码
+      # 步骤3：编译代码 - 为不同系统指定不同shell
       - name: 编译可执行文件
+        # 关键修复：根据操作系统选择合适的shell
+        shell: ${{ matrix.os == 'windows-latest' ? 'powershell' : 'bash' }}
         run: |
-          # 根据操作系统执行不同的编译命令
-          if [ "${{ matrix.os }}" == "windows-latest" ]; then
-            # Windows平台：静态链接所有依赖库，生成独立可执行文件
-            g++ calc_new!!!.cpp -o maimaiDX-calculator.exe \
+          ${{ matrix.os == 'windows-latest' ? '
+            # Windows PowerShell语法
+            g++ calc_new!!!.cpp -o maimaiDX-calculator.exe `
               -static -static-libgcc -static-libstdc++
-          else
-            # Linux平台：默认编译（可根据需求添加 -static 启用静态链接）
+          ' : '
+            # Linux Bash语法
             g++ calc_new!!!.cpp -o maimaiDX-calculator
-          fi
+          ' }}
 
       # 步骤4：上传构建产物作为工作流 artifact
       - name: 保存构建产物
