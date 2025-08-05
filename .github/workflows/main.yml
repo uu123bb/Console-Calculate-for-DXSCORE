@@ -1,68 +1,85 @@
-name: Build and Release
+name: 构建与发布
 
+# 触发条件：推送v*标签或手动触发
 on:
   push:
     tags:
-      - 'v*'
-  # 👇 在此处添加 workflow_dispatch 配置，用于手动触发工作流
-  workflow_dispatch:
-    # 可选：定义手动触发时可指定的参数（根据需要添加）
-    # inputs:
-    #   version:
-    #     description: '手动指定版本号'
-    #     required: false
-    #     default: 'v1.0.0'
+      - 'v*'  # 例如 v1.0.0, v2.1.1 等标签推送时触发
+  workflow_dispatch:  # 允许手动触发工作流
 
+# 权限配置：授予必要的操作权限
 permissions:
-  contents: write
-  packages: write
-  actions: write
+  contents: write       # 允许创建Release和上传资产
+  packages: write       # 允许操作GitHub Packages（如需）
+  actions: write        # 允许管理工作流（如需）
 
 jobs:
+  # 构建作业：在不同操作系统上编译代码
   build:
+    name: 编译代码
     strategy:
+      # 多平台矩阵：Ubuntu和Windows
       matrix:
         os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}  # 使用矩阵中定义的操作系统
     
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up environment
-      if: matrix.os == 'ubuntu-latest'
-      run: sudo apt-get update && sudo apt-get install -y g++
-    
-    - name: Build
-      run: |
-        if [ "${{ matrix.os }}" == "windows-latest" ]; then
-          g++ calc_new!!!.cpp -o maimaiDX-calculator.exe -static -static-libgcc -static-libstdc++
-        else
-          g++ calc_new!!!.cpp -o maimaiDX-calculator
-        fi
-    
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: maimaiDX-calculator-${{ matrix.os }}
-        path: |
-          maimaiDX-calculator*
-          !*.cpp
+      # 步骤1：检出代码仓库
+      - name: 检出源代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 拉取完整历史，确保版本信息正确
 
+      # 步骤2：配置构建环境（仅Ubuntu需要）
+      - name: 安装Ubuntu构建依赖
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++  # 安装GCC编译器
+
+      # 步骤3：编译代码
+      - name: 编译可执行文件
+        run: |
+          # 根据操作系统执行不同的编译命令
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            # Windows平台：静态链接所有依赖库，生成独立可执行文件
+            g++ calc_new!!!.cpp -o maimaiDX-calculator.exe \
+              -static -static-libgcc -static-libstdc++
+          else
+            # Linux平台：默认编译（可根据需求添加 -static 启用静态链接）
+            g++ calc_new!!!.cpp -o maimaiDX-calculator
+          fi
+
+      # 步骤4：上传构建产物作为工作流 artifact
+      - name: 保存构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: maimaiDX-calculator-${{ matrix.os }}  # 产物名称包含操作系统
+          path: |
+            maimaiDX-calculator*  # 匹配所有以该名称开头的文件
+            !*.cpp                # 排除源代码文件
+
+  # 发布作业：创建Release并附加构建产物
   release:
-    needs: build
+    name: 创建Release
+    needs: build  # 依赖build作业完成后才运行
     runs-on: ubuntu-latest
     steps:
-    - name: Download artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: artifacts
-    
-    - name: Create Release
-      uses: softprops/action-gh-release@v2
-      with:
-        generate_release_notes: true
-        files: |
-          artifacts/maimaiDX-calculator-ubuntu-latest/maimaiDX-calculator
-          artifacts/maimaiDX-calculator-windows-latest/maimaiDX-calculator.exe
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # 步骤1：下载所有构建产物
+      - name: 获取构建产物
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts  # 所有产物将下载到artifacts目录
+
+      # 步骤2：创建GitHub Release
+      - name: 发布版本
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true  # 自动生成发布说明
+          # 指定要上传的文件
+          files: |
+            artifacts/maimaiDX-calculator-ubuntu-latest/maimaiDX-calculator
+            artifacts/maimaiDX-calculator-windows-latest/maimaiDX-calculator.exe
+        env:
+          # 使用GitHub内置token，无需额外配置
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
