@@ -1,0 +1,57 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*' # 当推送以v开头的标签时触发
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up environment
+      run: |
+        if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+          sudo apt-get update
+          sudo apt-get install -y g++
+        fi
+    
+    - name: Build
+      run: |
+        if [ "${{ matrix.os }}" == "windows-latest" ]; then
+          g++ calc_new!!!.cpp -o maimaiDX-calculator.exe
+        else
+          g++ calc_new!!!.cpp -o maimaiDX-calculator
+        fi
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: maimaiDX-calculator-${{ matrix.os }}
+        path: |
+          maimaiDX-calculator*
+          !*.cpp
+          !*.hpp
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: artifacts
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          artifacts/maimaiDX-calculator-ubuntu-latest/maimaiDX-calculator
+          artifacts/maimaiDX-calculator-windows-latest/maimaiDX-calculator.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
